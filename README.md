@@ -18,7 +18,7 @@ This integration allows seamless control and monitoring of your **Dabbsson DBS23
 ## Installation
 ### HACS (Recommended)
 1. Open HACS, navigate to "Integrations", then click the three dots menu.
-2. Select "Custom repositories", add `https://github.com/<your_username>/ha-dabbsson-dbs2300`, and set category to `Integration`.
+2. Select "Custom repositories", add `https://github.com/kleimj1/dabbsson_dbs2300`, and set category to `Integration`.
 3. Search for `Dabbsson DBS2300` and install the integration.
 4. Restart Home Assistant.
 
