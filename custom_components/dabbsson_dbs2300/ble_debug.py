@@ -6,6 +6,7 @@ import base64
 import paho.mqtt.client as mqtt
 from bleak import BleakScanner, BleakClient, BleakError
 from datetime import datetime
+from Crypto.Cipher import AES
 
 DEFAULT_ADDRESS = "1C:90:FF:4A:84:E0"
 ADDRESS = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ADDRESS
@@ -17,6 +18,10 @@ MQTT_USER = "mqttadmin"
 MQTT_PASS = "Hfsc7110t"
 MQTT_TOPIC_BASE = "dabbsson/dbs2300"
 MQTT_DISCOVERY_PREFIX = "homeassistant"
+
+DEVICE_ID = "bf7be7dd94a4664017zyd4"
+LOCAL_KEY = b"yn^gA(Y;aN_@W)}T"
+
 
 def discovery_topic(sensor_id):
     return f"{MQTT_DISCOVERY_PREFIX}/sensor/dbs2300_{sensor_id}/config"
@@ -70,6 +75,19 @@ def log_to_file(message: str):
         f.write(message + "\n")
 
 
+class TuyaBLE:
+    def __init__(self, local_key, device_id):
+        self.local_key = local_key
+        self.device_id = device_id
+
+    def decrypt(self, payload: bytes) -> bytes:
+        iv = payload[0:16]
+        cipher = AES.new(self.local_key, AES.MODE_CBC, iv)
+        decrypted = cipher.decrypt(payload[16:])
+        decrypted = decrypted.rstrip(b"\x00")
+        return decrypted
+
+
 UUIDS_TO_MONITOR = {
     "status_notify":   "00002b10-0000-1000-8000-00805f9b34fb",
     "feature_control": "00002b29-0000-1000-8000-00805f9b34fb",
@@ -107,48 +125,47 @@ def parse_encoded_dbs3000b(hexdata):
     return result
 
 
-def parse_tuya_payload(payload_hex):
-    try:
-        payload = bytes.fromhex(payload_hex)
-        results = {}
-        i = 0
-        while i < len(payload):
-            dpid = payload[i]
-            dtype = payload[i + 1]
-            dlen = int.from_bytes(payload[i + 2:i + 4], "big")
-            dval = payload[i + 4:i + 4 + dlen]
-            key_name = DPID_MAP.get(dpid, f"unknown_{dpid}")
+def parse_tuya_payload(payload: bytes):
+    results = {}
+    i = 0
+    while i < len(payload):
+        dpid = payload[i]
+        dtype = payload[i + 1]
+        dlen = int.from_bytes(payload[i + 2:i + 4], "big")
+        dval = payload[i + 4:i + 4 + dlen]
+        key_name = DPID_MAP.get(dpid, f"unknown_{dpid}")
 
-            if dpid == 156:
-                nested = parse_encoded_dbs3000b(dval.hex())
-                results.update(nested)
-                for k, v in nested.items():
-                    mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{k}", v)
+        if dpid == 156:
+            nested = parse_encoded_dbs3000b(dval.hex())
+            results.update(nested)
+            for k, v in nested.items():
+                mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{k}", v)
+        else:
+            if dtype == 0x02 or dtype == 0x00:
+                val = int.from_bytes(dval, "big")
             else:
-                if dtype == 0x02 or dtype == 0x00:
-                    val = int.from_bytes(dval, "big")
-                else:
-                    val = dval.hex()
-                results[key_name] = val
-                mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{key_name}", val)
-            i += 4 + dlen
-        return results
-    except Exception as e:
-        return {"error": str(e)}
+                val = dval.hex()
+            results[key_name] = val
+            mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{key_name}", val)
+        i += 4 + dlen
+    return results
 
 
 async def advertise_scan():
     print("\n--- Tuya Advertising Sniff ---")
     scanner = BleakScanner()
     devices = await scanner.discover(timeout=5.0)
+    tuya = TuyaBLE(LOCAL_KEY, DEVICE_ID)
+
     for d in devices:
         if d.address == ADDRESS:
             print(f"Found {d.name} @ {d.address}, RSSI: {d.rssi}")
             md = d.metadata.get("manufacturer_data", {})
             if 0x2000 in md:
-                raw_hex = md[0x2000].hex()
-                parsed = parse_tuya_payload(raw_hex)
-                print("Parsed manufacturer_data:", json.dumps(parsed, indent=2))
+                raw_encrypted = md[0x2000]
+                decrypted = tuya.decrypt(raw_encrypted)
+                parsed = parse_tuya_payload(decrypted)
+                print("Parsed decrypted data:", json.dumps(parsed, indent=2))
                 log_to_file(json.dumps(parsed))
 
 
@@ -158,7 +175,7 @@ async def connect_and_monitor():
             async with BleakClient(ADDRESS) as client:
                 print(f"\n# Connected to {ADDRESS}")
                 log_to_file(f"# Connected to {ADDRESS} at {datetime.now()}")
-                
+
                 while True:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     print(f"\n--- {timestamp} ---")
