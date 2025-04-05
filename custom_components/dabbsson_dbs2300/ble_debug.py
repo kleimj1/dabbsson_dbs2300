@@ -28,7 +28,7 @@ def discovery_payload(name, topic, unit):
     return json.dumps({
         "name": name,
         "state_topic": topic,
-        "unique_id": name.lower().replace(" ", "_"),
+        "unique_id": f"dbs2300_{name.lower().replace(' ', '_')}",
         "unit_of_measurement": unit,
         "device": {
             "identifiers": ["dbs2300"],
@@ -50,7 +50,12 @@ def mqtt_discovery():
         "soc_dbs2300": ("DBS2300 SoC", "%"),
         "temp_dbs2300": ("DBS2300 Temperatur", "°C"),
         "dc_input": ("DBS2300 DC Input", "W"),
-        "ac_output_onoff": ("DBS2300 AC Output", None),
+        "dc_output": ("DBS2300 DC Output", "W"),
+        "output_power": ("DBS2300 AC Output", "W"),
+        "ac_output_onoff": ("DBS2300 AC Output (ON/OFF)", None),
+        "usb_5v_onoff": ("DBS2300 USB 5V", None),
+        "dc_12v_onoff": ("DBS2300 DC 12V", None),
+        "ac_input_power": ("DBS2300 AC Input", "W"),
         "val_205": ("DBS3000B Wert 205", "W"),
         "val_206": ("DBS3000B Wert 206", "W"),
         "val_208": ("DBS3000B Wert 208", "W"),
@@ -65,8 +70,11 @@ def mqtt_discovery():
         mqttc.publish(discovery_topic(key), payload, retain=True)
 
 def log_to_file(message: str):
-    with open(LOGFILE, "a") as f:
-        f.write(message + "\n")
+    try:
+        with open(LOGFILE, "a") as f:
+            f.write(f"{datetime.now()} {message}\n")
+    except Exception as e:
+        print(f"Fehler beim Schreiben ins Logfile: {e}")
 
 DPID_MAP = {
     1: "soc_dbs2300",
@@ -140,10 +148,8 @@ async def monitor_advertising():
                 if d.address == ADDRESS:
                     print(f"{datetime.now()} Found {d.name} @ {d.address}, RSSI: {d.rssi}")
                     md = d.metadata.get("manufacturer_data", {})
-                    print(f"manufacturer_data: {md}")
                     if 0x2000 in md:
                         raw_hex = md[0x2000].hex()
-                        print(f"Tuya payload hex: {raw_hex}")
                         parsed = parse_tuya_payload(raw_hex)
                         log_to_file(json.dumps(parsed))
                         print(json.dumps(parsed, indent=2))
@@ -152,9 +158,24 @@ async def monitor_advertising():
             print(f"BLE scan error: {e}")
             await asyncio.sleep(10)
 
+# MQTT Sniffer
+def on_mqtt_message(client, userdata, msg):
+    payload = msg.payload.decode()
+    message = f"MQTT RECEIVED ← Topic: {msg.topic}, Payload: {payload}"
+    print(message)
+    log_to_file(message)
 
+async def mqtt_sniffer():
+    mqttc.on_message = on_mqtt_message
+    mqttc.subscribe("dabbsson/#")
+    mqttc.loop_start()
+
+# Main
 async def main():
     mqtt_discovery()
-    await monitor_advertising()
+    await asyncio.gather(
+        monitor_advertising(),
+        mqtt_sniffer()
+    )
 
 asyncio.run(main())
