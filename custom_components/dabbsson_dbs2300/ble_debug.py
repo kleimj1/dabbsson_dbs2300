@@ -28,7 +28,7 @@ def discovery_payload(name, topic, unit):
     return json.dumps({
         "name": name,
         "state_topic": topic,
-        "unique_id": f"dbs2300_{name.lower().replace(' ', '_')}",
+        "unique_id": name.lower().replace(" ", "_"),
         "unit_of_measurement": unit,
         "device": {
             "identifiers": ["dbs2300"],
@@ -41,8 +41,10 @@ def discovery_payload(name, topic, unit):
 mqttc = mqtt.Client()
 mqttc.username_pw_set(MQTT_USER, MQTT_PASS)
 mqttc.connect(MQTT_HOST, MQTT_PORT, 60)
+mqttc.loop_start()
 
 def mqtt_publish(topic, value):
+    print(f"Publishing: {topic} -> {value}")
     mqttc.publish(topic, value, retain=True)
 
 def mqtt_discovery():
@@ -51,8 +53,7 @@ def mqtt_discovery():
         "temp_dbs2300": ("DBS2300 Temperatur", "°C"),
         "dc_input": ("DBS2300 DC Input", "W"),
         "dc_output": ("DBS2300 DC Output", "W"),
-        "output_power": ("DBS2300 AC Output", "W"),
-        "ac_output_onoff": ("DBS2300 AC Output (ON/OFF)", None),
+        "ac_output_onoff": ("DBS2300 AC Output", None),
         "usb_5v_onoff": ("DBS2300 USB 5V", None),
         "dc_12v_onoff": ("DBS2300 DC 12V", None),
         "ac_input_power": ("DBS2300 AC Input", "W"),
@@ -70,11 +71,8 @@ def mqtt_discovery():
         mqttc.publish(discovery_topic(key), payload, retain=True)
 
 def log_to_file(message: str):
-    try:
-        with open(LOGFILE, "a") as f:
-            f.write(f"{datetime.now()} {message}\n")
-    except Exception as e:
-        print(f"Fehler beim Schreiben ins Logfile: {e}")
+    with open(LOGFILE, "a") as f:
+        f.write(message + "\n")
 
 DPID_MAP = {
     1: "soc_dbs2300",
@@ -153,29 +151,14 @@ async def monitor_advertising():
                         parsed = parse_tuya_payload(raw_hex)
                         log_to_file(json.dumps(parsed))
                         print(json.dumps(parsed, indent=2))
+        
             await asyncio.sleep(10)
         except Exception as e:
             print(f"BLE scan error: {e}")
             await asyncio.sleep(10)
 
-# MQTT Sniffer
-def on_mqtt_message(client, userdata, msg):
-    payload = msg.payload.decode()
-    message = f"MQTT RECEIVED ← Topic: {msg.topic}, Payload: {payload}"
-    print(message)
-    log_to_file(message)
-
-async def mqtt_sniffer():
-    mqttc.on_message = on_mqtt_message
-    mqttc.subscribe("dabbsson/#")
-    mqttc.loop_start()
-
-# Main
 async def main():
     mqtt_discovery()
-    await asyncio.gather(
-        monitor_advertising(),
-        mqtt_sniffer()
-    )
+    await monitor_advertising()
 
 asyncio.run(main())
