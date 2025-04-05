@@ -2,6 +2,7 @@ import asyncio
 import sys
 import json
 import struct
+import base64
 import paho.mqtt.client as mqtt
 from bleak import BleakScanner, BleakClient, BleakError
 from datetime import datetime
@@ -50,6 +51,13 @@ def mqtt_discovery():
         "dc_input": ("DBS2300 DC Input", "W"),
         "ac_output_onoff": ("DBS2300 AC Output", None),
         "status_notify": ("DBS2300 Notify (GATT)", None),
+        "val_205": ("DBS3000B Wert 205", "W"),
+        "val_206": ("DBS3000B Wert 206", "W"),
+        "val_208": ("DBS3000B Wert 208", "W"),
+        "val_209": ("DBS3000B Wert 209", "W"),
+        "val_220": ("DBS3000B Wert 220", "W"),
+        "val_221": ("DBS3000B Wert 221", "W"),
+        "val_222": ("DBS3000B Wert 222", "W"),
     }
     for key, (name, unit) in sensors.items():
         topic = f"{MQTT_TOPIC_BASE}/tuya/{key}" if key != "status_notify" else f"{MQTT_TOPIC_BASE}/gatt/{key}"
@@ -82,6 +90,23 @@ DPID_MAP = {
     156: "encoded_dbs3000b",
 }
 
+
+def parse_encoded_dbs3000b(hexdata):
+    result = {}
+    try:
+        raw_data = bytes.fromhex(hexdata)
+        result["val_205"] = int.from_bytes(raw_data[0:4], 'big')
+        result["val_206"] = int.from_bytes(raw_data[4:8], 'big')
+        result["val_208"] = int.from_bytes(raw_data[8:12], 'big')
+        result["val_209"] = int.from_bytes(raw_data[12:16], 'big')
+        result["val_220"] = int.from_bytes(raw_data[16:20], 'big')
+        result["val_221"] = int.from_bytes(raw_data[20:24], 'big')
+        result["val_222"] = int.from_bytes(raw_data[24:28], 'big')
+    except Exception as e:
+        result["decode_error"] = str(e)
+    return result
+
+
 def parse_tuya_payload(payload_hex):
     try:
         payload = bytes.fromhex(payload_hex)
@@ -93,12 +118,19 @@ def parse_tuya_payload(payload_hex):
             dlen = int.from_bytes(payload[i + 2:i + 4], "big")
             dval = payload[i + 4:i + 4 + dlen]
             key_name = DPID_MAP.get(dpid, f"unknown_{dpid}")
-            if dtype == 0x02 or dtype == 0x00:
-                val = int.from_bytes(dval, "big")
+
+            if dpid == 156:
+                nested = parse_encoded_dbs3000b(dval.hex())
+                results.update(nested)
+                for k, v in nested.items():
+                    mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{k}", v)
             else:
-                val = dval.hex()
-            results[key_name] = val
-            mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{key_name}", val)
+                if dtype == 0x02 or dtype == 0x00:
+                    val = int.from_bytes(dval, "big")
+                else:
+                    val = dval.hex()
+                results[key_name] = val
+                mqtt_publish(f"{MQTT_TOPIC_BASE}/tuya/{key_name}", val)
             i += 4 + dlen
         return results
     except Exception as e:
