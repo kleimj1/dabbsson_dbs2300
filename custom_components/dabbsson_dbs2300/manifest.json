@@ -4,7 +4,7 @@
   "name": "Dabbsson DBS2300",
   "version": "1.0.1",
   "config_flow": true,
-  "documentation": "https://github.com/kleimj1/ha-dabbsson-dbs2300",
+  "documentation": "https://github.com/kleimj1/dabbsson_dbs2300",
   "requirements": ["bleak>=0.19.5"],
   "dependencies": ["bluetooth"],
   "codeowners": ["@kleimj1"],
