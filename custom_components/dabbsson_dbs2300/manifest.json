@@ -2,7 +2,7 @@
 {
   "domain": "dabbsson_dbs2300",
   "name": "Dabbsson DBS2300",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "config_flow": true,
   "documentation": "https://github.com/kleimj1/dabbsson_dbs2300",
   "requirements": ["bleak>=0.19.5"],
