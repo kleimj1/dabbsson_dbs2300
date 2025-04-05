@@ -1,10 +1,11 @@
 import asyncio
+import sys
 from bleak import BleakClient
 from datetime import datetime
 
-ADDRESS = "1C:90:FF:4A:84:E0"
+DEFAULT_ADDRESS = "1C:90:FF:4A:84:E0"
+ADDRESS = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_ADDRESS
 
-# Diese UUIDs werden im Loop regelmäßig gelesen:
 UUIDS_TO_MONITOR = {
     "status_notify":   "00002b10-0000-1000-8000-00805f9b34fb",
     "feature_control": "00002b29-0000-1000-8000-00805f9b34fb",
@@ -22,7 +23,6 @@ async def run():
         print(f"# Connected to {ADDRESS}")
         log_to_file(f"# Connected to {ADDRESS} at {datetime.now()}")
         
-        # Dump aller GATT-Services und Characteristics
         print("\\n=== GATT Service Dump ===")
         log_to_file("\\n=== GATT Service Dump ===")
         services = await client.get_services()
@@ -37,7 +37,6 @@ async def run():
         print("\\n=== Begin Live Monitoring ===")
         log_to_file("\\n=== Begin Live Monitoring ===")
 
-        # Dauerhaft lesen
         while True:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(f"\\n--- {timestamp} ---")
