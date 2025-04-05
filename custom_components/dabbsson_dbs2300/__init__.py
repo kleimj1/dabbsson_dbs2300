@@ -1,13 +1,22 @@
-from homeassistant.config_entries import ConfigEntry from homeassistant.core import HomeAssistant
+# custom_components/dabbsson_dbs2300/__init__.py
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
 PLATFORMS = ["sensor", "switch"]
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool: """Set up Dabbsson DBS2300 from a config entry.""" hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry.data
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Dabbsson DBS2300 from a config entry."""
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry.data
 
-await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-return True
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool: """Unload a config entry.""" unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS) if unload_ok: hass.data[DOMAIN].pop(entry.entry_id) return unload_ok
-
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+    return unload_ok
