@@ -140,8 +140,10 @@ async def monitor_advertising():
                 if d.address == ADDRESS:
                     print(f"{datetime.now()} Found {d.name} @ {d.address}, RSSI: {d.rssi}")
                     md = d.metadata.get("manufacturer_data", {})
+                    print(f"manufacturer_data: {md}")
                     if 0x2000 in md:
                         raw_hex = md[0x2000].hex()
+                        print(f"Tuya payload hex: {raw_hex}")
                         parsed = parse_tuya_payload(raw_hex)
                         log_to_file(json.dumps(parsed))
                         print(json.dumps(parsed, indent=2))
@@ -149,6 +151,7 @@ async def monitor_advertising():
         except Exception as e:
             print(f"BLE scan error: {e}")
             await asyncio.sleep(10)
+
 
 async def main():
     mqtt_discovery()
