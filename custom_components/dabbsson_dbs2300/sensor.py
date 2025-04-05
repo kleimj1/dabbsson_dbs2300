@@ -1,8 +1,11 @@
+# custom_components/dabbsson_dbs2300/sensor.py
+
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
 from .const import DOMAIN, BLE_KEYS
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    client = hass.data[DOMAIN][config_entry.entry_id]
+async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_entities):
+    client = hass.data[DOMAIN][config_entry.entry_id]["client"]
     sensors = [
         DBSensor(client, "State of Charge", BLE_KEYS["soc"], "%"),
         DBSensor(client, "Temperature", BLE_KEYS["temperature"], "°C"),
@@ -25,4 +28,4 @@ class DBSensor(SensorEntity):
 
     async def async_update(self):
         data = await self._client.read_gatt_char(self._key)
-        self._attr_state = parse_ble_data(data, self._key)
+        self._attr_state = int.from_bytes(data[:2], byteorder='little')
