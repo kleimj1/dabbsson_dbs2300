@@ -8,9 +8,7 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
 from homeassistant.helpers.discovery import async_load_platform
 
-DOMAIN = "dabbsson_dbs2300"
-CONF_DEVICES = "devices"
-CONF_MQTT_TOPIC = "mqtt_topic"
+from .const import DOMAIN, CONF_DEVICES, CONF_MQTT_TOPIC
 
 _LOGGER = logging.getLogger(__name__)
 
