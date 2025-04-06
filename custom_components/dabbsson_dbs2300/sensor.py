@@ -1,31 +1,50 @@
-# custom_components/dabbsson_dbs2300/sensor.py
+import logging
+import voluptuous as vol
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
-from .const import DOMAIN, BLE_KEYS
+from homeassistant.const import CONF_NAME
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.core import HomeAssistant
+from homeassistant.components import mqtt
 
-async def async_setup_entry(hass, config_entry: ConfigEntry, async_add_entities):
-    client = hass.data[DOMAIN][config_entry.entry_id]["client"]
-    sensors = [
-        DBSensor(client, "State of Charge", BLE_KEYS["soc"], "%"),
-        DBSensor(client, "Temperature", BLE_KEYS["temperature"], "°C"),
-        DBSensor(client, "DC Input", BLE_KEYS["dc_input"], "W"),
-        DBSensor(client, "DC Output", BLE_KEYS["dc_output"], "W"),
-        DBSensor(client, "Power Output", BLE_KEYS["power_output"], "W"),
-        DBSensor(client, "AC Input Power", BLE_KEYS["ac_input_power"], "W"),
-        DBSensor(client, "DBS3000B SoC", BLE_KEYS["soc_dbs3000b"], "%"),
-        DBSensor(client, "Encoded Info DBS3000B", BLE_KEYS["encoded_info"], None),
-    ]
-    async_add_entities(sensors, True)
+CONF_MQTT_TOPIC = "mqtt_topic"
 
-class DBSensor(SensorEntity):
-    def __init__(self, client, name, key, unit):
-        self._client = client
-        self._key = key
-        self._attr_name = f"DBS2300 {name}"
-        self._attr_unit_of_measurement = unit
-        self._attr_state = None
+_LOGGER = logging.getLogger(__name__)
 
-    async def async_update(self):
-        data = await self._client.read_gatt_char(self._key)
-        self._attr_state = int.from_bytes(data[:2], byteorder='little')
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: DiscoveryInfoType | None = None,
+):
+    if discovery_info is None:
+        return
+
+    name = discovery_info[CONF_NAME]
+    topic = discovery_info[CONF_MQTT_TOPIC]
+    async_add_entities([DabbssonSensor(name, topic)])
+
+class DabbssonSensor(SensorEntity):
+    def __init__(self, name: str, topic: str):
+        self._name = name
+        self._topic = topic
+        self._state = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def state(self):
+        return self._state
+
+    async def async_added_to_hass(self):
+        await mqtt.async_subscribe(self.hass, self._topic, self.message_received, 1)
+
+    @callback
+    def message_received(self, msg):
+        _LOGGER.debug(f"MQTT message for {self._name}: {msg.payload}")
+        self._state = msg.payload
+        self.async_write_ha_state()
