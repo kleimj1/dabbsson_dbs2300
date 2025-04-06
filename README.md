@@ -1,97 +1,87 @@
+# 🧠 Dabbsson DBS2300 Integration (Tuya via WLAN)
 
-Oder nutze den Direkt-Button:
-
-[![In Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/kleimj1/dabbsson_dbs2300)
-
----
-
-## ⚙️ Konfiguration (UI)
-
-| Feld                 | Beschreibung                                   |
-|----------------------|-----------------------------------------------|
-| `device_id`          | Tuya Device ID (z. B. `bf7be7dd94a4664017zyd4`) |
-| `local_key`          | Tuya Local Key (z. B. `yn^gA(Y;aN_@W)}T`)       |
-| `ip`                 | Lokale IP-Adresse des DBS2300 (z. B. `192.168.178.30`) |
-| `mqtt_host`          | MQTT Broker (z. B. `core-mosquitto`)          |
-| `mqtt_port`          | Meist `1883`                                   |
-| `mqtt_topic`         | Basis-Topic (z. B. `dabbsson`)                 |
-| `mqtt_command_topic` | Topic für Befehle (z. B. `dabbsson/command`)   |
-| `mqtt_discovery_prefix` | Meist `homeassistant`                      |
+Diese benutzerdefinierte Integration ermöglicht die Einbindung des **Dabbsson DBS2300** direkt über das **lokale Tuya-Protokoll via WLAN**. Die Kommunikation erfolgt per `tinytuya`, ohne Cloud oder Bluetooth.
 
 ---
 
-## 🔐 Woher bekomme ich `device_id` und `local_key`?
+## ✅ Funktionen
 
-1. Erstelle einen Account auf [https://iot.tuya.com](https://iot.tuya.com)
-2. Verknüpfe dein Smart Life Konto (App)
-3. Gehe zu Cloud → Devices → dein Gerät
-4. Dort findest du die Werte
-
-➡️ Alternativ Tools wie [`tuya-cli`](https://github.com/TuyaAPI/cli) oder Anleitungen zur lokalen Tuya-Entschlüsselung verwenden.
-
----
-
-## 📪 Beispiel-MQTT Topics
-
-| Topic                            | Beschreibung              | Schreibbar |
-|----------------------------------|----------------------------|------------|
-| `dabbsson/status/1`             | SoC Batterie 1 [%]         | ❌         |
-| `dabbsson/status/2`             | Kapazität Wh               | ❌         |
-| `dabbsson/status/10`            | Temperatur [°C]            | ❌         |
-| `dabbsson/status/25`            | AC verfügbar               | ✅         |
-| `dabbsson/status/101`           | Systembereit               | ❌         |
-| `dabbsson/status/102`           | Modus                      | ✅         |
-| `dabbsson/status/103`           | DC Input                   | ❌         |
-| `dabbsson/status/104`           | DC Input 2                 | ❌         |
-| `dabbsson/status/105`           | DC Output                  | ❌         |
-| `dabbsson/status/106`           | AC Output                  | ❌         |
-| `dabbsson/status/108`           | Output-Leistung            | ❌         |
-| `dabbsson/status/109`           | AC Out AN (Schalter)       | ✅         |
-| `dabbsson/status/110`           | AC Frequenz                | ❌         |
-| `dabbsson/status/111`           | USB 5V AN (Schalter)       | ✅         |
-| `dabbsson/status/112`           | DC 12V AN (Schalter)       | ✅         |
-| `dabbsson/status/113`           | Ladegrenze 1               | ❌         |
-| `dabbsson/status/114`           | Ladegrenze 2               | ❌         |
-| `dabbsson/status/115`           | ?                          | ❌         |
-| `dabbsson/status/116`           | ?                          | ❌         |
-| `dabbsson/status/117`           | ?                          | ❌         |
-| `dabbsson/status/118`           | ?                          | ❌         |
-| `dabbsson/status/120`           | AC Einschaltzeit           | ✅         |
-| `dabbsson/status/121`           | AC Dauer                   | ✅         |
-| `dabbsson/status/122`           | AC Ausschaltzeit           | ✅         |
-| `dabbsson/status/123`           | AC Zielwert [%]            | ✅         |
-| `dabbsson/status/124`           | Feature 1 (bool)           | ✅         |
-| `dabbsson/status/125`           | Feature 2 (bool)           | ✅         |
-| `dabbsson/status/126`           | Feature 3 (bool)           | ✅         |
-| `dabbsson/status/127`           | Systemmodus                | ❌         |
-| `dabbsson/status/128`           | Feature 4 (bool)           | ✅         |
-| `dabbsson/status/130`           | HW Version                 | ❌         |
-| `dabbsson/status/132`           | Firmware                   | ❌         |
-| `dabbsson/status/133`           | BMS Version                | ❌         |
-| `dabbsson/status/134`           | ?                          | ❌         |
-| `dabbsson/status/135`           | ?                          | ❌         |
-| `dabbsson/status/136`           | ?                          | ❌         |
-| `dabbsson/status/137`           | BMS Status                 | ❌         |
-| `dabbsson/status/138`           | SoC Zusatzbatterie [%]     | ❌         |
-| `dabbsson/status/139`           | ?                          | ❌         |
-| `dabbsson/status/140`           | Seriennummer               | ❌         |
-| `dabbsson/status/143`           | ?                          | ❌         |
-| `dabbsson/status/145`           | Netzspannung [V]           | ✅         |
-
-> ✏️ Schreibbare Werte kannst du mit folgendem Befehl setzen:
->
-> ```bash
-> mosquitto_pub -h <mqtt_host> -t dabbsson/command/109 -m true
-> ```
+- 🔌 Verbindung über WLAN (lokales Tuya-Protokoll)
+- 🔄 Automatische Erstellung von Sensoren & Schaltern
+- 🖥️ Schreibzugriff auf unterstützte DPS-Werte (z. B. AC Out)
+- 🧠 MQTT (optional über Add-on nutzbar)
+- 🔒 Keine Cloud notwendig
+- 💬 Unterstützt Deutsch und Englisch
 
 ---
 
-## 🧪 Beispiel: Home Assistant MQTT Discovery
+## 🚀 Installation über HACS
 
-Nach dem Start des Add-ons erscheinen automatisch Entitäten wie:
+Diese Integration ist mit [HACS (Home Assistant Community Store)](https://hacs.xyz) kompatibel.
+
+### Schritt-für-Schritt
+
+1. Öffne Home Assistant → HACS → Integrationen
+2. Klick auf „Benutzerdefinierte Repositories hinzufügen“
+3. Repository-URL:
+
+https://github.com/kleimj1/dabbsson_dbs2300
+
+
+4. Kategorie: `Integration`
+5. Danach: Integration wie gewohnt über `Einstellungen → Geräte & Dienste → Integration hinzufügen` einrichten
+
+👉 Oder verwende direkt diesen Button:
+
+[![In HACS hinzufügen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kleimj1&repository=dabbsson_dbs2300&category=integration)
+
+---
+
+## ⚙️ Konfiguration
+
+Die Integration wird über den Home Assistant UI Konfigurationsdialog eingerichtet.
+
+Du brauchst:
+
+- 📦 `Device ID`  
+- 🔑 `Local Key`  
+- 🌐 Lokale IP-Adresse des Geräts (z. B. `192.168.178.30`)
+
+### 🔍 Woher bekomme ich Device ID & Local Key?
+
+1. Registriere dich bei [https://iot.tuya.com](https://iot.tuya.com)
+2. Erstelle ein Cloud-Projekt & verknüpfe dein Smart Life Konto
+3. Unter „Devices“ kannst du `device_id` und `local_key` einsehen
+
+Alternativ: Tools wie [`tuya-cli`](https://github.com/TuyaAPI/cli)
+
+---
+
+## 🧪 Beispiel: Sensoren & Schalter
+
+Nach der Einrichtung erscheinen z. B. folgende Entitäten in Home Assistant:
 
 ```yaml
 sensor.dabbsson_soc_batterie_1
 sensor.dabbsson_temperatur
-sensor.dabbsson_netzspannung
+sensor.dabbsson_ac_frequenz
 switch.dabbsson_ac_out_an
+switch.dabbsson_usb_5v_an
+switch.dabbsson_dc_12v_an
+
+Die Sensoren basieren auf den bekannten DPS-Werten, z. B.:
+
+DPS	Beschreibung	Schreibbar
+1	SoC Batterie [%]	❌
+10	Temperatur [°C]	❌
+109	AC Out AN	✅
+111	USB 5V AN	✅
+112	DC 12V AN	✅
+123	Zielwert AC-Ladung [%]	✅
+145	Netzspannung	✅
+💬 Hinweise
+Diese Integration funktioniert vollständig autark ohne Cloud oder Bluetooth.
+
+Für MQTT-Unterstützung und HA Discovery via MQTT kannst du das passende Dabbsson Add-on verwenden.
+
+🧠 Viel Spaß mit deinem Dabbsson in Home Assistant!
