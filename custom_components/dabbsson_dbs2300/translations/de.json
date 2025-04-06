@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dabbsson Sensor",
+        "description": "Richte dein Dabbsson DBS2300-Gerät ein",
+        "data": {
+          "name": "Name",
+          "mqtt_topic": "MQTT-Topic"
+        }
+      }
+    }
+  }
+}
